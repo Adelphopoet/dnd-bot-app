@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/Adelphopoet/dnd-bot-app.git/game"
 	_ "github.com/lib/pq"
 
 	"gopkg.in/yaml.v2"
@@ -33,9 +32,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Использование секретных значений
-	fmt.Println("Database Password:", secrets.DatabasePassword)
-
 	// Подключение к базе данных PostgreSQL
 	connectionString := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=disable",
 		secrets.DatabaseHost, secrets.DatabaseLogin, secrets.DatabasePassword, secrets.DatabaseName)
@@ -53,14 +49,4 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Создание нового экземпляра Character
-	character := game.NewCharacter(db, "John")
-
-	// Сохранение экземпляра Character в базе данных
-	err = character.Save()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("Created character with ID: %d\n", character.ID)
 }
