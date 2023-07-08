@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 
+	"github.com/Adelphopoet/dnd-bot-app/telegram"
 	_ "github.com/lib/pq"
 	"gopkg.in/yaml.v2"
 )
@@ -49,4 +50,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	bot, err := telegram.NewBot(secrets.TelegramToken, db)
+	if err != nil {
+		log.Fatal("failed to create bot:", err)
+	}
+
+	err = bot.Start()
+	if err != nil {
+		log.Fatal("failed to start bot:", err)
+	}
 }

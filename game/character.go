@@ -3,6 +3,7 @@ package game
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -41,6 +42,9 @@ func (c *Character) Save() error {
 	err = tx.QueryRow(query, c.Name).Scan(&c.ID, &c.CreateTS, &c.UpdateTS, &c.DeleteTS)
 	if err != nil {
 		tx.Rollback()
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			return fmt.Errorf("Персонаж с таким именем уже существует.")
+		}
 		return fmt.Errorf("failed to save character: %v", err)
 	}
 
