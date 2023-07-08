@@ -7,7 +7,6 @@ import (
 	"log"
 
 	_ "github.com/lib/pq"
-
 	"gopkg.in/yaml.v2"
 )
 
@@ -16,6 +15,7 @@ type Secrets struct {
 	DatabaseLogin    string `yaml:"database_login"`
 	DatabasePassword string `yaml:"database_password"`
 	DatabaseName     string `yaml:"database_name"`
+	TelegramToken    string `yaml:"telegram_token"`
 }
 
 func main() {
