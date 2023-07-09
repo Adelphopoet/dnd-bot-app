@@ -8,34 +8,32 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-func (b *Bot) handleCreateCharacter(message *tgbotapi.Message) {
-	// Получить все доступные классы
+func (b *Bot) handleCreateCharacter(message *tgbotapi.Message, msgFrom *tgbotapi.User) {
+	// Get all game classes to chose
 	classes, err := game.GetAllClasses(b.db)
 	if err != nil {
 		log.Printf("Failed to get classes: %v", err)
-		b.sendMessage(message.Chat.ID, "Failed to get classes. Please try again later.")
+		b.sendMessage(message.Chat.ID, "Не получается загрузить список классов: "+err.Error())
 		return
 	}
 
-	// Создать кнопки для выбора класса
+	// Create choose class buttoms
 	var buttons []tgbotapi.InlineKeyboardButton
 	for _, class := range classes {
 		button := tgbotapi.NewInlineKeyboardButtonData(class.Name, class.Name)
 		buttons = append(buttons, button)
 	}
 
-	// Создать инлайн-клавиатуру с кнопками выбора класса
+	// Send to user inline keyboards with classes
 	replyMarkup := tgbotapi.NewInlineKeyboardMarkup(buttons)
-
-	// Отправить сообщение с клавиатурой выбора классов
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Выбери класс персонажа:")
 	msg.ReplyMarkup = replyMarkup
 	_, err = b.bot.Send(msg)
 
-	// Ожидать ответа пользователя с выбранным классом
+	// Wait for user response
 	update, err := b.waitForUserResponse(message.Chat.ID)
 	if err != nil {
-		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Время вышло."))
+		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, err.Error()))
 		return
 	}
 
@@ -51,7 +49,7 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message) {
 		return
 	}
 
-	// Отправить сообщение для ввода имени персонажа
+	// Ask user to create character name
 	msg = tgbotapi.NewMessage(message.Chat.ID, "Введи имя персонажа:")
 	_, err = b.bot.Send(msg)
 	if err != nil {
@@ -59,15 +57,15 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message) {
 		return
 	}
 
-	// Ожидать ответа пользователя с именем персонажа
+	// Wait for user response
 	update, err = b.waitForUserResponse(message.Chat.ID)
 	if err != nil {
-		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Время вышло."))
+		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, err.Error()))
 		return
 	}
 	characterName := update.Message.Text
 
-	// Создать нового персонажа
+	// Creating character
 	newCharacter := game.NewCharacter(b.db, characterName, []int{class.ID})
 	err = newCharacter.Save()
 	if err != nil {
@@ -75,7 +73,20 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message) {
 		return
 	}
 
-	// Отправить сообщение о создании персонажа
+	// Send creation character success message
 	response := fmt.Sprintf("Персонаж %s создан с классом %s.", newCharacter.Name, class.Name)
 	b.sendMessage(message.Chat.ID, response)
+
+	// Save user and character link
+	game.SaveBridgeTgUserCharacter(b.db, int64(msgFrom.ID), newCharacter.ID, true)
+
+	//Move character to first location
+	location, err := game.GetCharacterByID(b.db, 1)
+	if err != nil {
+		log.Printf("Failed to get location: %v", err)
+	} else {
+		newCharacter.SetLocation(1)
+		b.sendMessage(message.Chat.ID, "Персонаж "+newCharacter.Name+" появился в локации "+location.Name+".")
+	}
+
 }

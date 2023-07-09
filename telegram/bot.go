@@ -54,28 +54,33 @@ func (b *Bot) Start() error {
 		}
 		var comand string
 		var incomeMessage *tgbotapi.Message
+		var msgFrom *tgbotapi.User
 
 		if update.CallbackQuery != nil {
 			comand = update.CallbackQuery.Data
 			incomeMessage = update.CallbackQuery.Message
+			msgFrom = update.CallbackQuery.From
+
 		} else if update.Message != nil {
 			comand = update.Message.Text
 			incomeMessage = update.Message
+			msgFrom = update.Message.From
 		}
 
 		//Сохраняем Телеграм юзера в БД
-		err = SaveTgUser(b.db, incomeMessage.From)
+		err = SaveTgUser(b.db, msgFrom)
 		if err != nil {
 			log.Printf("Failed to save user: %v", err)
 		}
-
 		switch comand {
 		case "/Новый персонаж":
-			b.handleCreateCharacter(incomeMessage)
+			b.handleCreateCharacter(incomeMessage, msgFrom)
 		case "/start":
-			b.handleStartCommand(incomeMessage)
+			b.handleStartCommand(incomeMessage, msgFrom)
+		case "/Играть":
+			b.handleGameCommand(incomeMessage, msgFrom)
 		default:
-			b.handleUnknownCommand(incomeMessage)
+			b.handleUnknownCommand(incomeMessage, msgFrom)
 		}
 	}
 

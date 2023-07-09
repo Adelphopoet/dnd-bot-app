@@ -6,9 +6,8 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-func (b *Bot) handleStartCommand(message *tgbotapi.Message) {
+func (b *Bot) handleStartCommand(message *tgbotapi.Message, msgFrom *tgbotapi.User) {
 	// Отправить стартовое меню
-
 	button1 := tgbotapi.NewInlineKeyboardButtonData("Играть", "/Играть")
 	button2 := tgbotapi.NewInlineKeyboardButtonData("Новый персонаж", "/Новый персонаж")
 	button3 := tgbotapi.NewInlineKeyboardButtonData("tbd", "/option3")
