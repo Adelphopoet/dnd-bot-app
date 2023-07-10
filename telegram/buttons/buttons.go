@@ -1,4 +1,4 @@
-package buttons
+package tg_buttons
 
 import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 
@@ -10,10 +10,26 @@ func CreateHelpInlineButton() tgbotapi.InlineKeyboardButton {
 	return button
 }
 
-// Help menu buttom
+// Create new character buttom
 func CreateNewCharacterInlineButton() tgbotapi.InlineKeyboardButton {
 	buttonText := "Новый персонаж"
-	callbackData := "/Новый персонаж"
+	callbackData := "/new_character"
+	button := tgbotapi.NewInlineKeyboardButtonData(buttonText, callbackData)
+	return button
+}
+
+// Move buttom
+func CreateMoveInlineButton() tgbotapi.InlineKeyboardButton {
+	buttonText := "Идти"
+	callbackData := "/go"
+	button := tgbotapi.NewInlineKeyboardButtonData(buttonText, callbackData)
+	return button
+}
+
+// Play game buttom
+func CreatePlayInlineButton() tgbotapi.InlineKeyboardButton {
+	buttonText := "Играть"
+	callbackData := "/play"
 	button := tgbotapi.NewInlineKeyboardButtonData(buttonText, callbackData)
 	return button
 }

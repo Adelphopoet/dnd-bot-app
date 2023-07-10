@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -73,21 +74,25 @@ func (b *Bot) Start() error {
 			log.Printf("Failed to save user: %v", err)
 		}
 		log.Printf("Income command: %v", comand)
-		switch comand {
-		case "/Новый персонаж":
-			b.handleCreateCharacter(incomeMessage, msgFrom)
-		case "/start":
-			b.handleStartCommand(incomeMessage, msgFrom)
-		case "/Играть":
-			b.handleGameCommand(incomeMessage, msgFrom)
-		case "/Идти":
-			b.handleMoveCommand(incomeMessage, msgFrom)
-		default:
-			b.handleUnknownCommand(incomeMessage, msgFrom)
-		}
+		b.handleCommand(comand, incomeMessage, msgFrom)
 	}
 
 	return nil
+}
+
+func (b *Bot) handleCommand(comand string, message *tgbotapi.Message, msgFrom *tgbotapi.User) {
+	switch comand {
+	case "/new_character":
+		b.handleCreateCharacter(message, msgFrom)
+	case "/start":
+		b.handleStartCommand(message, msgFrom)
+	case "/play":
+		b.handleGameCommand(message, msgFrom)
+	case "/go":
+		b.handleMoveCommand(message, msgFrom)
+	default:
+		b.handleUnknownCommand(message, msgFrom)
+	}
 }
 
 func createKeyboardMarkup(buttons []string) tgbotapi.ReplyKeyboardMarkup {
@@ -103,7 +108,7 @@ func createKeyboardMarkup(buttons []string) tgbotapi.ReplyKeyboardMarkup {
 	}
 }
 
-func (b *Bot) waitForUserResponse(chatID int64) (*tgbotapi.Update, error) {
+func (b *Bot) waitForUserResponse(chatID int64) (update *tgbotapi.Update, err error, was_deligated bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -111,18 +116,43 @@ func (b *Bot) waitForUserResponse(chatID int64) (*tgbotapi.Update, error) {
 		select {
 		case update := <-b.updates:
 			if update.Message != nil && update.Message.Chat.ID == chatID {
-				return &update, nil
+				if update.Message.IsCommand() {
+					b.handleCommand(update.Message.Text, update.Message, update.Message.From)
+					return nil, nil, true
+				} else {
+					return &update, nil, false
+				}
 			} else if update.CallbackQuery != nil && update.CallbackQuery.Message.Chat.ID == chatID {
-				return &update, nil
+				if strings.HasPrefix(update.CallbackQuery.Data, "/") {
+					b.handleCommand(update.CallbackQuery.Data, update.CallbackQuery.Message, update.CallbackQuery.From)
+					return nil, nil, true
+				} else {
+					return &update, nil, false
+				}
 			}
 		case <-ctx.Done():
-			return nil, fmt.Errorf("no user response received within the timeout")
+			return nil, fmt.Errorf("no user response received within the timeout"), false
 		}
 	}
 }
 
-func (b *Bot) sendMessage(chatID int64, text string) {
+func (b *Bot) sendMessage(chatID int64, text string, keyboard ...interface{}) {
+	if strings.HasPrefix(text, "/") {
+		// ignore commands
+		return
+	}
+
 	msg := tgbotapi.NewMessage(chatID, text)
+	if len(keyboard) > 0 {
+		switch k := keyboard[0].(type) {
+		case tgbotapi.ReplyKeyboardMarkup:
+			msg.ReplyMarkup = k
+		case tgbotapi.InlineKeyboardMarkup:
+			msg.ReplyMarkup = k
+		default:
+			log.Println("Invalid keyboard type")
+		}
+	}
 	_, err := b.bot.Send(msg)
 	if err != nil {
 		log.Printf("Failed to send message: %v", err)

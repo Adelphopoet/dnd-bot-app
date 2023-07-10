@@ -61,7 +61,10 @@ func (b *Bot) handleMoveCommand(message *tgbotapi.Message, msgFrom *tgbotapi.Use
 		return
 	}
 	// Wait for user response
-	update, err := b.waitForUserResponse(message.Chat.ID)
+	update, err, was_deligated := b.waitForUserResponse(message.Chat.ID)
+	if was_deligated {
+		return
+	}
 	if err != nil {
 		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, err.Error()))
 		return

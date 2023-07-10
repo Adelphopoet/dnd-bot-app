@@ -3,6 +3,7 @@ package telegram
 import (
 	"log"
 
+	tg_buttons "github.com/Adelphopoet/dnd-bot-app/telegram/buttons"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -11,7 +12,7 @@ func (b *Bot) HandleIngameMenu(message *tgbotapi.Message, msgFrom *tgbotapi.User
 	userID := msgFrom.ID
 
 	buttons := []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("Идти", "/Идти"),
+		tg_buttons.CreateMoveInlineButton(),
 		//tgbotapi.NewInlineKeyboardButtonData("Опция 2", "option2"),
 		//tgbotapi.NewInlineKeyboardButtonData("Опция 3", "option3"),
 	}

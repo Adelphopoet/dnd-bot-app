@@ -36,7 +36,6 @@ func main() {
 	// Подключение к базе данных PostgreSQL
 	connectionString := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=disable",
 		secrets.DatabaseHost, secrets.DatabaseLogin, secrets.DatabasePassword, secrets.DatabaseName)
-	fmt.Println(connectionString)
 
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {

@@ -25,15 +25,17 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message, msgFrom *tgbotapi
 	}
 
 	// Send to user inline keyboards with classes
-	replyMarkup := tgbotapi.NewInlineKeyboardMarkup(buttons)
-	msg := tgbotapi.NewMessage(message.Chat.ID, "Выбери класс персонажа:")
-	msg.ReplyMarkup = replyMarkup
-	_, err = b.bot.Send(msg)
+	replyMarkup := createInlineKeyboardMarkup(buttons)
+	b.sendMessage(message.Chat.ID, "Выбери класс персонажа:", replyMarkup)
 
 	// Wait for user response
-	update, err := b.waitForUserResponse(message.Chat.ID)
+	//update, err := b.waitForUserResponse(message.Chat.ID)
+	update, err, was_deligated := b.waitForUserResponse(message.Chat.ID)
+	if was_deligated {
+		return
+	}
 	if err != nil {
-		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, err.Error()))
+		b.sendMessage(message.Chat.ID, err.Error())
 		return
 	}
 
@@ -45,22 +47,20 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message, msgFrom *tgbotapi
 	}
 	class, err := game.GetClassByName(b.db, className)
 	if err != nil {
-		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Произошла ошибка при выборе класса: "+err.Error()))
+		b.sendMessage(message.Chat.ID, "Произошла ошибка при выборе класса: "+err.Error())
 		return
 	}
 
 	// Ask user to create character name
-	msg = tgbotapi.NewMessage(message.Chat.ID, "Введи имя персонажа:")
-	_, err = b.bot.Send(msg)
-	if err != nil {
-		log.Printf("Failed to send message: %v", err)
-		return
-	}
+	b.sendMessage(message.Chat.ID, "Введи имя персонажа:")
 
 	// Wait for user response
-	update, err = b.waitForUserResponse(message.Chat.ID)
+	update, err, was_deligated = b.waitForUserResponse(message.Chat.ID)
+	if was_deligated {
+		return
+	}
 	if err != nil {
-		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, err.Error()))
+		b.sendMessage(message.Chat.ID, err.Error())
 		return
 	}
 	characterName := update.Message.Text
@@ -69,7 +69,7 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message, msgFrom *tgbotapi
 	newCharacter := game.NewCharacter(b.db, characterName, []int{class.ID})
 	err = newCharacter.Save()
 	if err != nil {
-		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Ошибка при создании персонажа: "+err.Error()))
+		b.sendMessage(message.Chat.ID, "Ошибка при создании персонажа: "+err.Error())
 		return
 	}
 

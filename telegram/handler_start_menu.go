@@ -3,15 +3,15 @@ package telegram
 import (
 	"log"
 
+	tg_buttons "github.com/Adelphopoet/dnd-bot-app/telegram/buttons"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 func (b *Bot) handleStartCommand(message *tgbotapi.Message, msgFrom *tgbotapi.User) {
 	// Отправить стартовое меню
-	button1 := tgbotapi.NewInlineKeyboardButtonData("Играть", "/Играть")
-	button2 := tgbotapi.NewInlineKeyboardButtonData("Новый персонаж", "/Новый персонаж")
-	button3 := tgbotapi.NewInlineKeyboardButtonData("tbd", "/option3")
-	buttons := []tgbotapi.InlineKeyboardButton{button1, button2, button3}
+	button1 := tg_buttons.CreatePlayInlineButton()
+	button2 := tg_buttons.CreateNewCharacterInlineButton()
+	buttons := []tgbotapi.InlineKeyboardButton{button1, button2}
 	replyMarkup := createInlineKeyboardMarkup(buttons)
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Welcome! Choose an option:")

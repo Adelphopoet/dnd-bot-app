@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/Adelphopoet/dnd-bot-app/game"
+	tg_buttons "github.com/Adelphopoet/dnd-bot-app/telegram/buttons"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -19,44 +20,27 @@ func (b *Bot) handleGameCommand(message *tgbotapi.Message, msgFrom *tgbotapi.Use
 	}
 
 	var buttons []tgbotapi.InlineKeyboardButton
-
-	//If user doen't have any characters logic
-	if len(characters) == 0 {
-		button := tgbotapi.NewInlineKeyboardButtonData("Новый персонаж", "/Новый персонаж")
-		buttons = append(buttons, button)
-		msg := tgbotapi.NewMessage(message.Chat.ID, "У тебя нет ни одного персонажа.")
-		replyMarkup := createInlineKeyboardMarkup(buttons)
-		msg.ReplyMarkup = replyMarkup
-		_, err = b.bot.Send(msg)
-		if err != nil {
-			log.Printf("Error is: %v", err)
-		}
-		return
-	}
-
 	// Создать клавиатуру с кнопками для выбора персонажа
 
 	for _, character := range characters {
 		button := tgbotapi.NewInlineKeyboardButtonData(character.Name, character.Name)
 		buttons = append(buttons, button)
 	}
-	//Добавим кнопку создания нового персонажа
-	buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Новый персонаж", "/Новый персонаж"))
+	buttons = append(buttons, tg_buttons.CreateNewCharacterInlineButton())
 
 	// Create inline keyboards with characters
 	replyMarkup := createInlineKeyboardMarkup(buttons)
 
 	// Send chose character menu
-	msg := tgbotapi.NewMessage(message.Chat.ID, "Выбери персонажа:")
-	msg.ReplyMarkup = replyMarkup
-	_, err = b.bot.Send(msg)
-	if err != nil {
-		log.Printf("Error is: %v", err)
+	b.sendMessage(message.Chat.ID, "Выбери персонажа:", replyMarkup)
+
+	// Wait for user response
+	update, err, was_deligated := b.waitForUserResponse(message.Chat.ID)
+	if was_deligated {
+		return
 	}
-	// Ожидать ответа пользователя с выбранным классом
-	update, err := b.waitForUserResponse(message.Chat.ID)
 	if err != nil {
-		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Время вышло."))
+		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, err.Error()))
 		return
 	}
 
