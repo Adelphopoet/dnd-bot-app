@@ -9,9 +9,9 @@ import (
 )
 
 func (b *Bot) handleGameCommand(message *tgbotapi.Message, msgFrom *tgbotapi.User) {
-	// Получить идентификатор пользователя
 	userID := msgFrom.ID
-	// Получить список персонажей пользователя
+
+	// Get all user characters list
 	characters, err := game.GetAllUserCharacters(b.db, int64(userID))
 	if err != nil {
 		log.Printf("Failed to get user characters: %v", err)

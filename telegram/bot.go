@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Adelphopoet/dnd-bot-app/game"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -73,7 +74,6 @@ func (b *Bot) Start() error {
 		if err != nil {
 			log.Printf("Failed to save user: %v", err)
 		}
-		log.Printf("Income command: %v", comand)
 		b.handleCommand(comand, incomeMessage, msgFrom)
 	}
 
@@ -81,7 +81,26 @@ func (b *Bot) Start() error {
 }
 
 func (b *Bot) handleCommand(comand string, message *tgbotapi.Message, msgFrom *tgbotapi.User) {
-	switch comand {
+	//Clear command from args
+	firstSpaceIndex := strings.Index(comand, " ")
+	var commandWoArgs, args string
+	if firstSpaceIndex != -1 {
+		commandWoArgs = comand[:firstSpaceIndex]
+		args = comand[firstSpaceIndex+1:]
+	} else {
+		commandWoArgs = comand
+		args = ""
+	}
+	log.Printf("Command %v from user id %v with args %v", commandWoArgs, msgFrom.ID, args)
+
+	//Log command to DB
+	commandLog := game.NewUserCommandLog(b.db)
+	err := commandLog.LogCommand(int64(msgFrom.ID), commandWoArgs, args)
+	if err != nil {
+		log.Printf("Failed to log command: %v", err)
+	}
+
+	switch commandWoArgs {
 	case "/new_character":
 		b.handleCreateCharacter(message, msgFrom)
 	case "/start":
@@ -90,6 +109,16 @@ func (b *Bot) handleCommand(comand string, message *tgbotapi.Message, msgFrom *t
 		b.handleGameCommand(message, msgFrom)
 	case "/go":
 		b.handleMoveCommand(message, msgFrom)
+	case "/look_araund":
+		b.handleLookAraundCommand(message, msgFrom)
+	case "/prev":
+		b.handlePreviousCommand(message, msgFrom)
+	case "/character_info":
+		b.handleCharacterInfo(message, msgFrom, args)
+	case "/ingame":
+		b.HandleIngameMenu(message, msgFrom)
+	case "/help":
+		b.HandleHelpMenu(message, msgFrom)
 	default:
 		b.handleUnknownCommand(message, msgFrom)
 	}

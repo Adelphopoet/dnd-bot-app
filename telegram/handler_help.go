@@ -7,16 +7,13 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-func (b *Bot) HandleIngameMenu(message *tgbotapi.Message, msgFrom *tgbotapi.User) {
+func (b *Bot) HandleHelpMenu(message *tgbotapi.Message, msgFrom *tgbotapi.User) {
 	// Get user id
 	userID := msgFrom.ID
 
 	buttons := []tgbotapi.InlineKeyboardButton{
-		tg_buttons.CreateMoveInlineButton(),
-		tg_buttons.CreateLookAroundInlineButton(),
-		tg_buttons.CreateHelpInlineButton(),
-		tg_buttons.CreatePrevInlineButton(),
-		tg_buttons.CreateStartInlineButton(),
+		tgbotapi.NewInlineKeyboardButtonURL("Перейти в GitHub проекта", "https://github.com/Adelphopoet/dnd-bot-app"),
+		tg_buttons.CreateIngameInlineButton(),
 	}
 	keyboard := createInlineKeyboardMarkup(buttons)
 

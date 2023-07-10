@@ -130,3 +130,35 @@ func (l *Location) GetAvailablePathes() ([]*Location, error) {
 
 	return pathes, nil
 }
+
+func (l *Location) GetCharactersInLocation() ([]*Character, error) {
+	query := `
+		SELECT c.id, c.name, c.create_ts, c.update_ts, c.delete_ts, c.is_deleted
+		FROM game.dim_character c
+		JOIN game.bridge_character_location b ON c.id = b.character_id
+		WHERE b.location_id = $1
+		AND c.is_deleted = false
+	`
+	rows, err := l.db.Query(query, l.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get characters in location: %v", err)
+	}
+	defer rows.Close()
+
+	var characters []*Character
+	for rows.Next() {
+		character := &Character{}
+		err := rows.Scan(&character.ID, &character.Name, &character.CreateTS, &character.UpdateTS, &character.DeleteTS, &character.IsDeleted)
+		character.db = l.db
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan character: %v", err)
+		}
+		characters = append(characters, character)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error in rows: %v", err)
+	}
+
+	return characters, nil
+}

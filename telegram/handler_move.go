@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/Adelphopoet/dnd-bot-app/game"
+	tg_buttons "github.com/Adelphopoet/dnd-bot-app/telegram/buttons"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -16,6 +17,16 @@ func (b *Bot) handleMoveCommand(message *tgbotapi.Message, msgFrom *tgbotapi.Use
 	if err != nil {
 		log.Printf("Failed to get active character: %v", err)
 		b.sendMessage(message.Chat.ID, "Ошибка: "+err.Error())
+		return
+	}
+
+	// If user doesn't have active character lets suggest to create new
+	if activeCharacter == nil {
+		// Create choose class buttoms
+		var buttons []tgbotapi.InlineKeyboardButton
+		button := tg_buttons.CreateNewCharacterInlineButton()
+		buttons = append(buttons, button)
+		b.sendMessage(message.Chat.ID, "У тебя нет персонажа.", createInlineKeyboardMarkup(buttons))
 		return
 	}
 	log.Printf("Get active character: %v", activeCharacter.Name)

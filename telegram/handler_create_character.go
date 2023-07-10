@@ -29,7 +29,6 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message, msgFrom *tgbotapi
 	b.sendMessage(message.Chat.ID, "Выбери класс персонажа:", replyMarkup)
 
 	// Wait for user response
-	//update, err := b.waitForUserResponse(message.Chat.ID)
 	update, err, was_deligated := b.waitForUserResponse(message.Chat.ID)
 	if was_deligated {
 		return

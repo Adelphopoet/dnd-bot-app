@@ -14,7 +14,7 @@ func (b *Bot) handleStartCommand(message *tgbotapi.Message, msgFrom *tgbotapi.Us
 	buttons := []tgbotapi.InlineKeyboardButton{button1, button2}
 	replyMarkup := createInlineKeyboardMarkup(buttons)
 
-	msg := tgbotapi.NewMessage(message.Chat.ID, "Welcome! Choose an option:")
+	msg := tgbotapi.NewMessage(message.Chat.ID, "Добро пожаловать!")
 	msg.ReplyMarkup = replyMarkup
 	_, err := b.bot.Send(msg)
 	if err != nil {
