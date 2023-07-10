@@ -28,6 +28,10 @@ func (b *Bot) handleCharacterInfo(message *tgbotapi.Message, msgFrom *tgbotapi.U
 	info := fmt.Sprintf("Имя: %s\nID: %d\nСоздан: %s\nОбновлен: %s",
 		character.Name, character.ID, character.CreateTS, character.UpdateTS)
 
+	for _, class := range character.CharacterClass {
+		info += fmt.Sprintf("Класс: %s, Уровень: %d\n", class.Class.Name, class.Lvl)
+	}
+
 	//create keyboard to look up characters
 	var buttons []tgbotapi.InlineKeyboardButton
 

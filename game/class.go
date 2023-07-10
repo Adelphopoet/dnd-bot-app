@@ -78,3 +78,23 @@ func GetClassByName(db *sql.DB, className string) (*Class, error) {
 
 	return &class, nil
 }
+
+func GetClassById(db *sql.DB, id int) (*Class, error) {
+	query := `
+		SELECT id, "name", create_ts, update_ts, delete_ts
+		FROM game.dim_class
+		WHERE id = ($1)
+	`
+	row := db.QueryRow(query, id)
+
+	var class Class
+	err := row.Scan(&class.ID, &class.Name, &class.CreateTS, &class.UpdateTS, &class.DeleteTS)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("class not found")
+		}
+		return nil, fmt.Errorf("failed to scan class: %v", err)
+	}
+
+	return &class, nil
+}

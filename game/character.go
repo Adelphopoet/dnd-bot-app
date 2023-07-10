@@ -11,14 +11,20 @@ import (
 )
 
 type Character struct {
-	ID        int
-	Name      string
-	CreateTS  time.Time
-	UpdateTS  time.Time
-	DeleteTS  sql.NullTime
-	db        *sql.DB
-	IsDeleted bool
-	ClassIDs  []int
+	ID             int
+	Name           string
+	CreateTS       time.Time
+	UpdateTS       time.Time
+	DeleteTS       sql.NullTime
+	db             *sql.DB
+	IsDeleted      bool
+	ClassIDs       []int
+	CharacterClass []*CharacterClass
+}
+
+type CharacterClass struct {
+	Class *Class
+	Lvl   int
 }
 
 func NewCharacter(db *sql.DB, name string, classIDs []int) *Character {
@@ -94,6 +100,40 @@ func (c *Character) Load() error {
 		return fmt.Errorf("failed to load character: %v", err)
 	}
 	return nil
+}
+
+func (c *Character) GetCharacterClasses() ([]*CharacterClass, error) {
+	query := `
+		SELECT cc.class_id, cc.lvl
+		FROM game.bridge_character_class cc
+		WHERE cc.character_id = $1
+	`
+	rows, err := c.db.Query(query, c.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan character class: %v", err)
+	}
+	defer rows.Close()
+
+	var characterClasses []*CharacterClass
+	for rows.Next() {
+		var lvl, classID int
+		err := rows.Scan(&classID, &lvl)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan character class: %v", err)
+		}
+
+		class, err := GetClassById(c.db, classID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get class: %v", err)
+		}
+		characterClasses = append(characterClasses,
+			&CharacterClass{
+				Class: class,
+				Lvl:   lvl,
+			})
+	}
+	c.CharacterClass = characterClasses
+	return characterClasses, nil
 }
 
 func GetAllUserCharacters(db *sql.DB, userID int64) ([]*Character, error) {
@@ -180,6 +220,7 @@ func GetCharacterByID(db *sql.DB, characterID int) (*Character, error) {
 	}
 	character.db = db
 	character.ID = characterID
+	character.GetCharacterClasses()
 	return &character, nil
 }
 
@@ -195,6 +236,8 @@ func GetCharacterByName(db *sql.DB, characterName string) (*Character, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load character: %v", err)
 	}
+	character.db = db
+	character.GetCharacterClasses()
 	return &character, nil
 }
 
