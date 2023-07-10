@@ -27,18 +27,27 @@ func (b *Bot) handleMoveCommand(message *tgbotapi.Message, msgFrom *tgbotapi.Use
 	}
 
 	// Получить доступные пути для персонажа
-	currentLocation := activeCharacter
-	availablePaths, err := activeCharacter.GetAvailablePaths()
+	currentLocation, err := activeCharacter.GetCurrentLocation()
+	if err != nil {
+		b.sendMessage(message.Chat.ID, "Не могу получить текущую локацию: "+err.Error())
+		log.Printf("Failed to get active character: %v", err)
+	}
+	availablePaths, err := currentLocation.GetAvailablePathes()
 	if err != nil {
 		log.Printf("Failed to get available paths: %v", err)
-		b.sendMessage(message.Chat.ID, "Failed to get available paths. Please try again later.")
+		b.sendMessage(message.Chat.ID, "Ошибка: "+err.Error())
 		return
+	}
+
+	if len(availablePaths) == 0 {
+		b.sendMessage(int64(msgFrom.ID), "Отсюда нет выхода.")
+		b.HandleIngameMenu(message, msgFrom)
 	}
 
 	// Создать кнопки клавиатуры для выбора локации
 	var buttons []tgbotapi.InlineKeyboardButton
 	for _, path := range availablePaths {
-		button := tgbotapi.NewInlineKeyboardButtonData(path.LocationTo.Name, fmt.Sprintf("/ChangeLocation %d", path.LocationTo.ID))
+		button := tgbotapi.NewInlineKeyboardButtonData(path.Name, fmt.Sprintf("/ChangeLocation %d", path.ID))
 		buttons = append(buttons, button)
 	}
 	keyboard := createInlineKeyboardMarkup(buttons)

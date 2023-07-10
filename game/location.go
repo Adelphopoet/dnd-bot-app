@@ -7,26 +7,29 @@ import (
 )
 
 type Location struct {
-	ID       int
-	Name     string
-	CreateTS time.Time
-	UpdateTS time.Time
-	DeleteTS sql.NullTime
+	ID        int
+	Name      string
+	CreateTS  time.Time
+	UpdateTS  time.Time
+	DeleteTS  sql.NullTime
+	IsDeleted bool
+	db        *sql.DB
 }
 
-func NewLocation(name string) *Location {
+func NewLocation(name string, db *sql.DB) *Location {
 	return &Location{
 		Name: name,
+		db:   db,
 	}
 }
 
-func (l *Location) Save(db *sql.DB) error {
+func (l *Location) Save() error {
 	query := `
 		INSERT INTO game.dim_location ("name")
 		VALUES ($1)
 		RETURNING id, create_ts, update_ts, delete_ts
 	`
-	err := db.QueryRow(query, l.Name).Scan(&l.ID, &l.CreateTS, &l.UpdateTS, &l.DeleteTS)
+	err := l.db.QueryRow(query, l.Name).Scan(&l.ID, &l.CreateTS, &l.UpdateTS, &l.DeleteTS)
 	if err != nil {
 		return fmt.Errorf("failed to save location: %v", err)
 	}
@@ -35,13 +38,13 @@ func (l *Location) Save(db *sql.DB) error {
 
 func GetLocationByName(db *sql.DB, name string) (*Location, error) {
 	query := `
-		SELECT id, "name", create_ts, update_ts, delete_ts
+		SELECT id, "name", create_ts, update_ts, delete_ts, is_deleted
 		FROM game.dim_location
 		WHERE "name" = $1
 		AND is_delete = False
 	`
 	location := &Location{}
-	err := db.QueryRow(query, name).Scan(&location.ID, &location.Name, &location.CreateTS, &location.UpdateTS, &location.DeleteTS)
+	err := db.QueryRow(query, name).Scan(&location.ID, &location.Name, &location.CreateTS, &location.UpdateTS, &location.DeleteTS, &location.IsDeleted)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // Location not found
@@ -53,24 +56,25 @@ func GetLocationByName(db *sql.DB, name string) (*Location, error) {
 
 func GetLocationByID(db *sql.DB, id int) (*Location, error) {
 	query := `
-		SELECT id, "name", create_ts, update_ts, delete_ts
+		SELECT id, "name", create_ts, update_ts, delete_ts, is_deleted
 		FROM game.dim_location
 		WHERE id = $1
 	`
 	location := &Location{}
-	err := db.QueryRow(query, id).Scan(&location.ID, &location.Name, &location.CreateTS, &location.UpdateTS, &location.DeleteTS)
+	err := db.QueryRow(query, id).Scan(&location.ID, &location.Name, &location.CreateTS, &location.UpdateTS, &location.DeleteTS, &location.IsDeleted)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // Location not found
 		}
 		return nil, fmt.Errorf("failed to get location by ID: %v", err)
 	}
+	location.db = db
 	return location, nil
 }
 
 func GetAllLocations(db *sql.DB) ([]Location, error) {
 	query := `
-		SELECT id, "name", create_ts, update_ts, delete_ts
+		SELECT id, "name", create_ts, update_ts, delete_ts, is_deleted
 		FROM game.dim_location
 		ORDER BY update_ts ASC
 	`
@@ -83,7 +87,7 @@ func GetAllLocations(db *sql.DB) ([]Location, error) {
 	var locations []Location
 	for rows.Next() {
 		var location Location
-		err := rows.Scan(&location.ID, &location.Name, &location.CreateTS, &location.UpdateTS, &location.DeleteTS)
+		err := rows.Scan(&location.ID, &location.Name, &location.CreateTS, &location.UpdateTS, &location.DeleteTS, &location.IsDeleted)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan location: %v", err)
 		}
@@ -106,13 +110,13 @@ func (l *Location) GetAvailablePathes() ([]*Location, error) {
 		AND lc.is_deleted = false
 		AND dl.is_deleted = false
 	`
+	var pathes []*Location
 	rows, err := l.db.Query(query, l.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get available pathes: %v", err)
 	}
 	defer rows.Close()
 
-	var pathes []*Location
 	for rows.Next() {
 		path := &Location{}
 		err := rows.Scan(&path.ID, &path.Name, &path.CreateTS, &path.UpdateTS, &path.DeleteTS, &path.IsDeleted)

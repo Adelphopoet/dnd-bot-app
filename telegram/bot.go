@@ -72,6 +72,7 @@ func (b *Bot) Start() error {
 		if err != nil {
 			log.Printf("Failed to save user: %v", err)
 		}
+		log.Printf("Income command: %v", comand)
 		switch comand {
 		case "/Новый персонаж":
 			b.handleCreateCharacter(incomeMessage, msgFrom)
@@ -79,6 +80,8 @@ func (b *Bot) Start() error {
 			b.handleStartCommand(incomeMessage, msgFrom)
 		case "/Играть":
 			b.handleGameCommand(incomeMessage, msgFrom)
+		case "/Идти":
+			b.handleMoveCommand(incomeMessage, msgFrom)
 		default:
 			b.handleUnknownCommand(incomeMessage, msgFrom)
 		}

@@ -18,18 +18,35 @@ func (b *Bot) handleGameCommand(message *tgbotapi.Message, msgFrom *tgbotapi.Use
 		return
 	}
 
-	// Создать клавиатуру с кнопками для выбора персонажа
 	var buttons []tgbotapi.InlineKeyboardButton
+
+	//If user doen't have any characters logic
+	if len(characters) == 0 {
+		button := tgbotapi.NewInlineKeyboardButtonData("/Новый персонаж", "/Новый персонаж")
+		buttons = append(buttons, button)
+		msg := tgbotapi.NewMessage(message.Chat.ID, "У тебя нет ни одного персонажа.")
+		replyMarkup := createInlineKeyboardMarkup(buttons)
+		msg.ReplyMarkup = replyMarkup
+		_, err = b.bot.Send(msg)
+		if err != nil {
+			log.Printf("Error is: %v", err)
+		}
+		return
+	}
+
+	// Создать клавиатуру с кнопками для выбора персонажа
+
 	for _, character := range characters {
 		button := tgbotapi.NewInlineKeyboardButtonData(character.Name, character.Name)
 		buttons = append(buttons, button)
 	}
 	//Добавим кнопку создания нового персонажа
 	buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Новый персонаж", "/Новый персонаж"))
-	// Создать инлайн-клавиатуру с кнопками выбора класса
+
+	// Create inline keyboards with characters
 	replyMarkup := createInlineKeyboardMarkup(buttons)
 
-	// Отправить сообщение с клавиатурой выбора классов
+	// Send chose character menu
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Выбери персонажа:")
 	msg.ReplyMarkup = replyMarkup
 	_, err = b.bot.Send(msg)
@@ -42,6 +59,7 @@ func (b *Bot) handleGameCommand(message *tgbotapi.Message, msgFrom *tgbotapi.Use
 		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Время вышло."))
 		return
 	}
+
 	var characterName string
 	if update.Message != nil {
 		characterName = update.Message.Text

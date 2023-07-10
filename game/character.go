@@ -109,28 +109,30 @@ func GetAllUserCharacters(db *sql.DB, userID int64) ([]*Character, error) {
 	defer rows.Close()
 
 	var characters []*Character
-	isMainCharacter := true // Флаг для определения главного персонажа
-	for rows.Next() {
-		var characterID int
-		err := rows.Scan(&characterID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan user character: %v", err)
+	if rows != nil {
+		isMainCharacter := true // Флаг для определения главного персонажа
+		for rows.Next() {
+			var characterID int
+			err := rows.Scan(&characterID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to scan user character: %v", err)
+			}
+
+			character, err := GetCharacterByID(db, characterID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load user character: %v", err)
+			}
+
+			if isMainCharacter {
+				isMainCharacter = false
+			}
+
+			characters = append(characters, character)
 		}
 
-		character, err := GetCharacterByID(db, characterID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load user character: %v", err)
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("error in rows: %v", err)
 		}
-
-		if isMainCharacter {
-			isMainCharacter = false
-		}
-
-		characters = append(characters, character)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error in rows: %v", err)
 	}
 
 	return characters, nil
@@ -138,7 +140,7 @@ func GetAllUserCharacters(db *sql.DB, userID int64) ([]*Character, error) {
 
 func GetActiveCharacter(db *sql.DB, userID int64) (*Character, error) {
 	query := `
-		SELECT c.id, c.name, c.create_ts, c.update_ts, c.delete_ts, c.is_deleted
+		SELECT c.id
 		FROM game.dim_character c
 		JOIN game.bridge_tg_user_character b ON c.id = b.character_id
 		WHERE b.user_id = $1 
@@ -146,13 +148,19 @@ func GetActiveCharacter(db *sql.DB, userID int64) (*Character, error) {
 		AND c.is_deleted = false
 		AND b.is_deleted = false
 	`
-	character := &Character{}
-	err := db.QueryRow(query, userID).Scan(&character.ID, &character.Name, &character.CreateTS, &character.UpdateTS, &character.DeleteTS, &character.IsDeleted)
+	var characterID int
+
+	err := db.QueryRow(query, userID).Scan(&characterID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // Нет активного персонажа
 		}
 		return nil, fmt.Errorf("failed to get active character: %v", err)
+	}
+
+	character, err := GetCharacterByID(db, characterID)
+	if err != nil {
+		return nil, nil // No actual character
 	}
 
 	return character, nil
@@ -216,15 +224,17 @@ func (c *Character) SetLocation(locationID int) error {
 	return nil
 }
 
-func GetCurrentLocation(db *sql.DB, characterID int) (*Location, error) {
+func (c *Character) GetCurrentLocation() (*Location, error) {
+	fmt.Printf("Start GetCurrentLocation with character %v", c.ID)
 	query := `
-		SELECT l.id, l.name, l.create_ts, l.update_ts, l.delete_ts, l.is_deleted
+		SELECT l.id
 		FROM game.dim_location l
 		JOIN game.bridge_character_location b ON l.id = b.location_id
 		WHERE b.character_id = $1
 	`
-	location := &Location{}
-	err := db.QueryRow(query, characterID).Scan(&location.ID, &location.Name, &location.CreateTS, &location.UpdateTS, &location.DeleteTS, &location.IsDeleted)
+	var locationID int
+	err := c.db.QueryRow(query, c.ID).Scan(&locationID)
+	location, err := GetLocationByID(c.db, locationID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // Нет текущей локации для персонажа

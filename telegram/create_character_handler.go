@@ -81,12 +81,14 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message, msgFrom *tgbotapi
 	game.SaveBridgeTgUserCharacter(b.db, int64(msgFrom.ID), newCharacter.ID, true)
 
 	//Move character to first location
-	location, err := game.GetCharacterByID(b.db, 1)
+	location, err := game.GetLocationByID(b.db, 1)
 	if err != nil {
 		log.Printf("Failed to get location: %v", err)
 	} else {
-		newCharacter.SetLocation(1)
+		newCharacter.SetLocation(location.ID)
 		b.sendMessage(message.Chat.ID, "Персонаж "+newCharacter.Name+" появился в локации "+location.Name+".")
 	}
+
+	b.HandleIngameMenu(message, msgFrom)
 
 }
