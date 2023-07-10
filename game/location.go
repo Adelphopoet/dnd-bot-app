@@ -41,7 +41,7 @@ func GetLocationByName(db *sql.DB, name string) (*Location, error) {
 		SELECT id, "name", create_ts, update_ts, delete_ts, is_deleted
 		FROM game.dim_location
 		WHERE "name" = $1
-		AND is_delete = False
+		AND is_deleted = False
 	`
 	location := &Location{}
 	err := db.QueryRow(query, name).Scan(&location.ID, &location.Name, &location.CreateTS, &location.UpdateTS, &location.DeleteTS, &location.IsDeleted)
@@ -59,6 +59,7 @@ func GetLocationByID(db *sql.DB, id int) (*Location, error) {
 		SELECT id, "name", create_ts, update_ts, delete_ts, is_deleted
 		FROM game.dim_location
 		WHERE id = $1
+		AND is_deleted = False
 	`
 	location := &Location{}
 	err := db.QueryRow(query, id).Scan(&location.ID, &location.Name, &location.CreateTS, &location.UpdateTS, &location.DeleteTS, &location.IsDeleted)
@@ -76,6 +77,7 @@ func GetAllLocations(db *sql.DB) ([]Location, error) {
 	query := `
 		SELECT id, "name", create_ts, update_ts, delete_ts, is_deleted
 		FROM game.dim_location
+		WHERE is_deleted = False
 		ORDER BY update_ts ASC
 	`
 	rows, err := db.Query(query)

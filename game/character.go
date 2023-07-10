@@ -3,6 +3,7 @@ package game
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -198,6 +199,7 @@ func GetCharacterByName(db *sql.DB, characterName string) (*Character, error) {
 }
 
 func (c *Character) SetLocation(locationID int) error {
+	log.Printf("Start set location to character %v, new location is %v", c.Name, locationID)
 	tx, err := c.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %v", err)

@@ -22,7 +22,7 @@ func (b *Bot) handleGameCommand(message *tgbotapi.Message, msgFrom *tgbotapi.Use
 
 	//If user doen't have any characters logic
 	if len(characters) == 0 {
-		button := tgbotapi.NewInlineKeyboardButtonData("/Новый персонаж", "/Новый персонаж")
+		button := tgbotapi.NewInlineKeyboardButtonData("Новый персонаж", "/Новый персонаж")
 		buttons = append(buttons, button)
 		msg := tgbotapi.NewMessage(message.Chat.ID, "У тебя нет ни одного персонажа.")
 		replyMarkup := createInlineKeyboardMarkup(buttons)
@@ -74,5 +74,6 @@ func (b *Bot) handleGameCommand(message *tgbotapi.Message, msgFrom *tgbotapi.Use
 		game.SetMainCharacter(b.db, int64(msgFrom.ID), character.ID)
 		b.bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Выбран персонаж: "+character.Name))
 	}
+	b.HandleIngameMenu(message, msgFrom)
 
 }
