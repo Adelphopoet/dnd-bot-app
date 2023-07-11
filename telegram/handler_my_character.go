@@ -9,9 +9,9 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-func (b *Bot) handleCharacterInfo(message *tgbotapi.Message, msgFrom *tgbotapi.User, characterName string, prev_command ...interface{}) {
+func (b *Bot) handleMyCharacter(message *tgbotapi.Message, msgFrom *tgbotapi.User, prev_command ...interface{}) {
 	// Look up for character
-	character, err := game.GetCharacterByName(b.db, characterName)
+	character, err := game.GetActiveCharacter(b.db, int64(msgFrom.ID))
 	if err != nil {
 		log.Printf("Failed to get character: %v", err)
 		b.sendMessage(message.Chat.ID, "Ошибка: "+err.Error())
@@ -33,9 +33,7 @@ func (b *Bot) handleCharacterInfo(message *tgbotapi.Message, msgFrom *tgbotapi.U
 		info += fmt.Sprintf("Класс: %s, Уровень: %d\n", class.Class.Name, class.Lvl)
 	}
 
-	//create keyboard to look up characters
-	var buttons []tgbotapi.InlineKeyboardButton
-
+	// Create buttons
 	var prevCommand string
 
 	if len(prev_command) > 0 {
@@ -47,13 +45,29 @@ func (b *Bot) handleCharacterInfo(message *tgbotapi.Message, msgFrom *tgbotapi.U
 			prevCommand = "/look_araund"
 		}
 	} else {
-		prevCommand = "/look_araund"
+		prevCommand = "/play"
 	}
+
+	var buttons []tgbotapi.InlineKeyboardButton
 	buttons = append(
 		buttons,
 		tgbotapi.NewInlineKeyboardButtonData("Назад", prevCommand),
 		tg_buttons.CreateIngameInlineButton(),
 	)
+
+	// Check character can lvling
+	canLvl, err := game.CheckCharacterCanLvlUp(character)
+	if err != nil {
+		log.Fatalf("Error during check can leveling. UserID: %v, CharacterID: %v, error: %v", msgFrom.ID, character.ID, err.Error())
+	}
+
+	// If character has enought EXP, add lvling button to keyboard
+	if canLvl {
+		buttons = append(
+			buttons,
+			tg_buttons.CreateLvlupInlineButton(),
+		)
+	}
 	replyMarkup := createInlineKeyboardMarkup(buttons)
 	b.sendMessage(message.Chat.ID, info, replyMarkup)
 }

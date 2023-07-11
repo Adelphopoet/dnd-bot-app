@@ -65,3 +65,19 @@ func CreateIngameInlineButton() tgbotapi.InlineKeyboardButton {
 	button := tgbotapi.NewInlineKeyboardButtonData(buttonText, callbackData)
 	return button
 }
+
+// Lvling menu button
+func CreateLvlupInlineButton() tgbotapi.InlineKeyboardButton {
+	buttonText := "Поднять уровень"
+	callbackData := "/lvlup"
+	button := tgbotapi.NewInlineKeyboardButtonData(buttonText, callbackData)
+	return button
+}
+
+// My character button
+func CreateMyCharacterInlineButton() tgbotapi.InlineKeyboardButton {
+	buttonText := "Мой персонаж"
+	callbackData := "/my_character"
+	button := tgbotapi.NewInlineKeyboardButtonData(buttonText, callbackData)
+	return button
+}

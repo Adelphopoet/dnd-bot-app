@@ -12,10 +12,11 @@ func (b *Bot) HandleIngameMenu(message *tgbotapi.Message, msgFrom *tgbotapi.User
 	userID := msgFrom.ID
 
 	buttons := []tgbotapi.InlineKeyboardButton{
+		tg_buttons.CreateMyCharacterInlineButton(),
 		tg_buttons.CreateMoveInlineButton(),
 		tg_buttons.CreateLookAroundInlineButton(),
-		tg_buttons.CreateHelpInlineButton(),
 		tg_buttons.CreatePrevInlineButton(),
+		tg_buttons.CreateHelpInlineButton(),
 		tg_buttons.CreateStartInlineButton(),
 	}
 	keyboard := createInlineKeyboardMarkup(buttons)

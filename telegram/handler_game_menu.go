@@ -26,7 +26,7 @@ func (b *Bot) handleGameCommand(message *tgbotapi.Message, msgFrom *tgbotapi.Use
 		button := tgbotapi.NewInlineKeyboardButtonData(character.Name, character.Name)
 		buttons = append(buttons, button)
 	}
-	buttons = append(buttons, tg_buttons.CreateNewCharacterInlineButton())
+	buttons = append(buttons, tg_buttons.CreateNewCharacterInlineButton(), tg_buttons.CreateHelpInlineButton())
 
 	// Create inline keyboards with characters
 	replyMarkup := createInlineKeyboardMarkup(buttons)

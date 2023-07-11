@@ -20,6 +20,12 @@ type Character struct {
 	IsDeleted      bool
 	ClassIDs       []int
 	CharacterClass []*CharacterClass
+	Attributes     []*CharacterAtribute
+}
+
+type CharacterAtribute struct {
+	Attribute *Attribute
+	Value     *AttributeValue
 }
 
 type CharacterClass struct {
@@ -58,8 +64,8 @@ func (c *Character) Save() error {
 	// Связывание персонажа с классами в таблице bridge_character_class
 	for _, classID := range c.ClassIDs {
 		query = `
-			INSERT INTO game.bridge_character_class (character_id, class_id)
-			VALUES ($1, $2)
+			INSERT INTO game.bridge_character_class (character_id, class_id, lvl)
+			VALUES ($1, $2, 0)
 		`
 		_, err = tx.Exec(query, c.ID, classID)
 		if err != nil {
@@ -198,7 +204,7 @@ func GetActiveCharacter(db *sql.DB, userID int64) (*Character, error) {
 		}
 		return nil, fmt.Errorf("failed to get active character: %v", err)
 	}
-
+	log.Println("Start search char by id")
 	character, err := GetCharacterByID(db, characterID)
 	if err != nil {
 		return nil, nil // No actual character
@@ -218,9 +224,18 @@ func GetCharacterByID(db *sql.DB, characterID int) (*Character, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load character: %v", err)
 	}
+
 	character.db = db
+	_, err = character.GetCharacterClasses()
+	if err != nil {
+		return nil, fmt.Errorf("Error during get character classes: ", err)
+	}
+
 	character.ID = characterID
-	character.GetCharacterClasses()
+	_, err = character.GetAttributeValues()
+	if err != nil {
+		return nil, fmt.Errorf("Error during get character attributes: ", err)
+	}
 	return &character, nil
 }
 
@@ -237,7 +252,16 @@ func GetCharacterByName(db *sql.DB, characterName string) (*Character, error) {
 		return nil, fmt.Errorf("failed to load character: %v", err)
 	}
 	character.db = db
-	character.GetCharacterClasses()
+
+	_, err = character.GetCharacterClasses()
+	if err != nil {
+		return nil, fmt.Errorf("Error during get character classes: ", err)
+	}
+
+	_, err = character.GetAttributeValues()
+	if err != nil {
+		return nil, fmt.Errorf("Error during get character attributes: ", err)
+	}
 	return &character, nil
 }
 
@@ -270,7 +294,6 @@ func (c *Character) SetLocation(locationID int) error {
 }
 
 func (c *Character) GetCurrentLocation() (*Location, error) {
-	fmt.Printf("Start GetCurrentLocation with character %v", c.ID)
 	query := `
 		SELECT l.id
 		FROM game.dim_location l
@@ -288,4 +311,255 @@ func (c *Character) GetCurrentLocation() (*Location, error) {
 	}
 
 	return location, nil
+}
+
+func (c *Character) GetSummaryLvl() (int, error) {
+	query := `
+		SELECT SUM(lvl) lvl
+		FROM game.bridge_character_class bcc 
+		WHERE character_id = $1
+	`
+	var lvl int
+	err := c.db.QueryRow(query, c.ID).Scan(&lvl)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get character summary lvl: %v", err)
+	} else {
+		return lvl, nil
+	}
+}
+
+func (c *Character) GetAttributeValues() ([]*CharacterAtribute, error) {
+	query := `
+		SELECT 
+			attribute_id, 
+			numeric_value, 
+			string_value, 
+			formula_value, 
+			bool_value
+		FROM game.bridge_character_attribute_value
+		WHERE character_id = $1
+	`
+	rows, err := c.db.Query(query, c.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get character attributes: %v", err)
+	}
+	defer rows.Close()
+
+	var attributes []*CharacterAtribute
+	for rows.Next() {
+		var attId int
+		attVal := &AttributeValue{FormulaValue: &Formula{}}
+
+		err := rows.Scan(
+			&attId,
+			&attVal.NumericValue,
+			&attVal.StringValue,
+			&attVal.FormulaValue.Expression,
+			&attVal.BoolValue,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan character attribute: %v", err)
+		}
+		attr, err := GetAttributeByID(c.db, attId)
+		if err != nil {
+			return nil, err
+		}
+		attributes = append(attributes, &CharacterAtribute{Attribute: attr, Value: attVal})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error in character attributes rows: %v", err)
+	}
+	c.Attributes = attributes
+	return attributes, nil
+}
+
+func (c *Character) GetAttributeValueByName(name string) *AttributeValue {
+	var value *AttributeValue = nil
+	for _, attr := range c.Attributes {
+		if attr.Attribute.Name == name {
+			value = attr.Value
+			break
+		}
+	}
+
+	return value
+}
+
+func (c *Character) getSummaryLvl() (int, error) {
+	var summaryLvl int
+	query := `
+		SELECT 
+			SUM(lvl) lvl
+		FROM game.bridge_character_class
+		WHERE character_id = $1
+		AND is_deleted = False
+	`
+	rows, err := c.db.Query(query, c.ID)
+	if err != nil {
+		return summaryLvl, fmt.Errorf("failed to get character summary lvl: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&summaryLvl)
+		if err != nil {
+			return summaryLvl, fmt.Errorf("failed to scan character summary lvl: %v", err)
+		}
+	}
+	return summaryLvl, nil
+}
+
+func CheckCharacterCanLvlUp(character *Character) (bool, error) {
+	// Get character LVl
+	summaryLvl, err := character.getSummaryLvl()
+	if err != nil {
+		return false, err
+	}
+
+	// Get character EXP
+	currentXpAtt := character.GetAttributeValueByName("exp")
+
+	var currentXp int = 0
+
+	if currentXpAtt == nil {
+		currentXp = 0
+	} else {
+		currentXp = currentXpAtt.NumericValue
+	}
+
+	// Calc exp to rich next LVL
+	nextLvl := summaryLvl + 1
+	nextLvlInfo, err := GetLvlInfo(character.db, nextLvl)
+	if err != nil {
+		return false, err
+	}
+
+	// Max lvl reached
+	if nextLvlInfo == nil {
+		return false, nil
+	}
+
+	nextLvlExp := nextLvlInfo.Exp
+
+	if currentXp >= nextLvlExp {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func (c *Character) SetAttributeValue(attribute *Attribute, value *AttributeValue) error {
+	query := `
+		INSERT INTO game.bridge_character_attribute_value (character_id, attribute_id, numeric_value, string_value, formula_value, bool_value)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (character_id, attribute_id) DO UPDATE
+		SET numeric_value = EXCLUDED.numeric_value,
+			string_value = EXCLUDED.string_value,
+			formula_value = EXCLUDED.formula_value,
+			bool_value = EXCLUDED.bool_value
+	`
+	// Avaiod nill in str
+	var formulaValue string
+	if value.FormulaValue == nil {
+		formulaValue = ""
+	} else {
+		formulaValue = value.FormulaValue.Expression
+	}
+	_, err := c.db.Exec(query, c.ID, attribute.ID, value.NumericValue, value.StringValue, formulaValue, value.BoolValue)
+	if err != nil {
+		return fmt.Errorf("failed to set attribute value: %v", err)
+	}
+	return nil
+}
+
+func (c *Character) addExp(addExp int) error {
+	// init exp type
+	attribute, err := GetAttributeByName(c.db, "exp")
+	if err != nil {
+		return err
+	}
+
+	// Get current exp val
+	currentValue := c.GetAttributeValueByName("exp")
+	if err != nil {
+		return fmt.Errorf("failed to get current exp value: %v", err)
+	}
+
+	var currentExp int
+	if currentValue == nil {
+		currentExp = 0
+	} else {
+		currentExp = currentValue.NumericValue
+	}
+
+	newValue := currentExp + addExp
+	value := &AttributeValue{
+		NumericValue: newValue,
+	}
+
+	err = c.SetAttributeValue(attribute, value)
+	if err != nil {
+		return fmt.Errorf("failed to add exp: %v", err)
+	}
+
+	return nil
+}
+
+func (c *Character) LvlUp(class *Class) (bool, error) {
+	// Check character can lvl up
+	canLvl, err := CheckCharacterCanLvlUp(c)
+	if err != nil {
+		return false, err
+	}
+
+	if !canLvl {
+		return false, nil
+	}
+
+	// Start lvling
+	query := `
+		INSERT INTO game.bridge_character_class (character_id, class_id, lvl)
+		VALUES ($1, $2, 1)
+		ON CONFLICT (character_id, class_id) DO UPDATE
+		SET lvl = bridge_character_class.lvl + 1
+		WHERE bridge_character_class.character_id = $1
+		AND bridge_character_class.class_id = $2
+	`
+	_, err = c.db.Exec(query, c.ID, class.ID)
+	if err != nil {
+		return false, fmt.Errorf("failed to level up: %v", err)
+	}
+
+	// Get CON value
+	_, err = c.GetAttributeValues()
+	if err != nil {
+		return false, err
+	}
+	conAtt := c.GetAttributeValueByName("con")
+	conBonus, err := GetAttributeBonus(conAtt)
+	if err != nil {
+		return true, err
+	}
+
+	// Roll for start HP
+	hitDiceFormula, err := class.GetAttributeFormulaByName("hp dice")
+	if err != nil {
+		return true, err
+	}
+	maxHp, err := CalculateFormula(hitDiceFormula)
+	if err != nil {
+		return true, err
+	}
+
+	maxHp += conBonus // Add bonus from CON
+	hpAtt, err := GetAttributeByName(c.db, "hp")
+	if err != nil {
+		return false, err
+	}
+	err = c.SetAttributeValue(hpAtt, &AttributeValue{NumericValue: maxHp})
+	if err != nil {
+		return false, err
+	}
+
+	return false, nil
 }

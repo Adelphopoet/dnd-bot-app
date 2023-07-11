@@ -15,6 +15,7 @@ type Class struct {
 	UpdateTS  time.Time
 	DeleteTS  sql.NullTime
 	IsDeleted bool
+	db        *sql.DB
 }
 
 func NewClass(db *sql.DB, name string) (*Class, error) {
@@ -75,7 +76,7 @@ func GetClassByName(db *sql.DB, className string) (*Class, error) {
 		}
 		return nil, fmt.Errorf("failed to scan class: %v", err)
 	}
-
+	class.db = db
 	return &class, nil
 }
 
@@ -95,6 +96,54 @@ func GetClassById(db *sql.DB, id int) (*Class, error) {
 		}
 		return nil, fmt.Errorf("failed to scan class: %v", err)
 	}
-
+	class.db = db
 	return &class, nil
+}
+
+func (c *Class) GetAttributeFormulaById(attributeID int) (string, error) {
+	query := `
+		SELECT formula
+		FROM game.bridge_class_attribute_formula
+		WHERE class_id = $1
+		AND attribute_id = $2
+		AND is_deleted = false
+	`
+	var formula string
+	err := c.db.QueryRow(query, c.ID, attributeID).Scan(&formula)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil // No formula found
+		}
+		return "", fmt.Errorf("failed to get class attribute formula: %v", err)
+	}
+
+	return formula, nil
+}
+
+// Get class atribute formula by ID or Name
+func (c *Class) GetAttributeFormulaByName(attName string) (*Formula, error) {
+	var attFormula = &Formula{}
+
+	att, err := GetAttributeByName(c.db, attName)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `
+		SELECT formula
+		FROM game.bridge_class_attribute_formula
+		WHERE class_id = $1
+		AND attribute_id = $2
+		AND is_deleted = false
+	`
+
+	err = c.db.QueryRow(query, c.ID, att.ID).Scan(&attFormula.Expression)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("No formula found") // No formula found
+		}
+		return nil, fmt.Errorf("failed to get class attribute formula: %v", err)
+	}
+
+	return attFormula, nil
 }

@@ -3,6 +3,7 @@ package telegram
 import (
 	"fmt"
 	"log"
+	"sort"
 
 	"github.com/Adelphopoet/dnd-bot-app/game"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -76,6 +77,49 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message, msgFrom *tgbotapi
 	response := fmt.Sprintf("Персонаж %s создан с классом %s.", newCharacter.Name, class.Name)
 	b.sendMessage(message.Chat.ID, response)
 
+	// Setup start charecteristic
+	baseFormula := &game.Formula{Expression: "d6"}
+
+	var atts []*game.Attribute
+	for _, attName := range [6]string{"str", "dex", "int", "con", "wis", "cha"} {
+		att, err := game.GetAttributeByName(b.db, attName)
+		if err != nil {
+			log.Fatalf("Error during getting att by name %v, %v", att, err)
+			b.sendMessage(message.Chat.ID, "Ошибка получения характеристики "+err.Error())
+			return
+		} else {
+			atts = append(atts, att)
+		}
+	}
+
+	//roll for max 3 from 4 d6 dice for each characteristics
+	b.sendMessage(message.Chat.ID, "Ролим характеристики!")
+	for _, att := range atts {
+		var tmpValList []int
+		for i := 0; i < 4; i++ {
+			diceRes, err := game.CalculateFormula(baseFormula)
+			if err != nil {
+				log.Fatalf("Can't roll dice: %v", err)
+				b.sendMessage(message.Chat.ID, "Ошибка вычисления броска костей: "+err.Error())
+				return
+			}
+			tmpValList = append(tmpValList, diceRes)
+		}
+		sort.Ints(tmpValList)
+		tmpValList = tmpValList[1:4]
+		diceSum := 0
+		for i := 0; i < 3; i++ {
+			diceSum += tmpValList[i]
+		}
+		err = newCharacter.SetAttributeValue(att, &game.AttributeValue{NumericValue: diceSum})
+		if err != nil {
+			log.Fatalf("Can't set up characteristic: %v", err)
+			b.sendMessage(message.Chat.ID, "Ошибка сохранения характеристики: "+err.Error())
+			return
+		}
+		b.sendMessage(message.Chat.ID, fmt.Sprintf("Характеристике: %s, Установлено значение: %d\n", att.Name, diceSum))
+	}
+
 	// Save user and character link
 	game.SaveBridgeTgUserCharacter(b.db, int64(msgFrom.ID), newCharacter.ID, true)
 
@@ -88,6 +132,13 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message, msgFrom *tgbotapi
 		b.sendMessage(message.Chat.ID, "Персонаж "+newCharacter.Name+" появился в локации "+location.Name+".")
 	}
 
+	// Lvl up from 0 to 1
+	_, err = newCharacter.LvlUp(class)
+	if err != nil {
+		log.Fatal("New characterID: %v from userID %v can't lvlup: %v", newCharacter.ID, msgFrom.ID, err.Error())
+	}
+
+	// At last send in game menu
 	b.HandleIngameMenu(message, msgFrom)
 
 }

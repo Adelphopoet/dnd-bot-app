@@ -119,6 +119,12 @@ func (b *Bot) handleCommand(comand string, message *tgbotapi.Message, msgFrom *t
 		b.HandleIngameMenu(message, msgFrom)
 	case "/help":
 		b.HandleHelpMenu(message, msgFrom)
+	case "/calc":
+		b.handleCalculateFormula(message, msgFrom, args)
+	case "/lvlup":
+		b.handleLvlUp(message, msgFrom)
+	case "/my_character":
+		b.handleMyCharacter(message, msgFrom)
 	default:
 		b.handleUnknownCommand(message, msgFrom)
 	}
