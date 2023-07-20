@@ -313,21 +313,6 @@ func (c *Character) GetCurrentLocation() (*Location, error) {
 	return location, nil
 }
 
-func (c *Character) GetSummaryLvl() (int, error) {
-	query := `
-		SELECT SUM(lvl) lvl
-		FROM game.bridge_character_class bcc 
-		WHERE character_id = $1
-	`
-	var lvl int
-	err := c.db.QueryRow(query, c.ID).Scan(&lvl)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get character summary lvl: %v", err)
-	} else {
-		return lvl, nil
-	}
-}
-
 func (c *Character) GetAttributeValues() ([]*CharacterAtribute, error) {
 	query := `
 		SELECT 

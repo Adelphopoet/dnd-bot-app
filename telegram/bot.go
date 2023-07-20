@@ -123,6 +123,8 @@ func (b *Bot) handleCommand(comand string, message *tgbotapi.Message, msgFrom *t
 		b.handleCalculateFormula(message, msgFrom, args)
 	case "/lvlup":
 		b.handleLvlUp(message, msgFrom)
+	case "/fight":
+		b.handleFight(message, msgFrom, args)
 	case "/my_character":
 		b.handleMyCharacter(message, msgFrom)
 	default:

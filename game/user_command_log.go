@@ -33,7 +33,7 @@ func (u *UserCommandLog) LogCommand(userID int64, command string, args string) e
 	`
 	_, err := u.DB.Exec(query, userID, command, args)
 	if err != nil {
-		return fmt.Errorf("failed to log command: %v", err)
+		return fmt.Errorf("failed to log command with userId %d, command %v, args%v. Error: %v", userID, command, args, err)
 	}
 	return nil
 }
