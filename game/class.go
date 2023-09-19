@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	calculation "github.com/Adelphopoet/dnd-bot-app/game/claculation"
 	_ "github.com/lib/pq"
 )
 
@@ -121,8 +122,8 @@ func (c *Class) GetAttributeFormulaById(attributeID int) (string, error) {
 }
 
 // Get class atribute formula by ID or Name
-func (c *Class) GetAttributeFormulaByName(attName string) (*Formula, error) {
-	var attFormula = &Formula{}
+func (c *Class) GetAttributeFormulaByName(attName string) (*calculation.Formula, error) {
+	var attFormula = &calculation.Formula{}
 
 	att, err := GetAttributeByName(c.db, attName)
 	if err != nil {

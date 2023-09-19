@@ -3,7 +3,10 @@ package game
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
+
+	calculation "github.com/Adelphopoet/dnd-bot-app/game/claculation"
 )
 
 type Attribute struct {
@@ -20,7 +23,7 @@ type AttributeValue struct {
 	StringValue  string
 	NumericValue int
 	BoolValue    bool
-	FormulaValue *Formula
+	FormulaValue *calculation.Formula
 }
 
 func GetAttributeByName(db *sql.DB, attributeName string) (*Attribute, error) {
@@ -56,10 +59,20 @@ func GetAttributeBonus(attibuteValue *AttributeValue) (int, error) {
 	if attibuteValue == nil {
 		return bonus, fmt.Errorf("Epty attribute value")
 	}
-	baseFormula := &Formula{Expression: fmt.Sprintf("(%d-10)/2", attibuteValue.NumericValue)}
-	bonus, err := CalculateFormula(baseFormula)
+	baseFormula := &calculation.Formula{Expression: fmt.Sprintf("(%d-10)/2", attibuteValue.NumericValue)}
+	bonus, err := calculation.CalculateFormula(baseFormula)
 	if err != nil {
 		return bonus, err
 	}
 	return bonus, nil
+}
+
+func isAttributeMultiply(attribute string) bool {
+	attributesToMultiply := []string{"str", "dex", "int", "con", "wis", "cha"}
+	for _, a := range attributesToMultiply {
+		if strings.EqualFold(attribute, a) {
+			return true
+		}
+	}
+	return false
 }

@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/Adelphopoet/dnd-bot-app/game"
+	calculation "github.com/Adelphopoet/dnd-bot-app/game/claculation"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -78,7 +79,7 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message, msgFrom *tgbotapi
 	b.sendMessage(message.Chat.ID, response)
 
 	// Setup start charecteristic
-	baseFormula := &game.Formula{Expression: "d6"}
+	baseFormula := &calculation.Formula{Expression: "d6"}
 
 	var atts []*game.Attribute
 	for _, attName := range [6]string{"str", "dex", "int", "con", "wis", "cha"} {
@@ -97,7 +98,7 @@ func (b *Bot) handleCreateCharacter(message *tgbotapi.Message, msgFrom *tgbotapi
 	for _, att := range atts {
 		var tmpValList []int
 		for i := 0; i < 4; i++ {
-			diceRes, err := game.CalculateFormula(baseFormula)
+			diceRes, err := calculation.CalculateFormula(baseFormula)
 			if err != nil {
 				log.Fatalf("Can't roll dice: %v", err)
 				b.sendMessage(message.Chat.ID, "Ошибка вычисления броска костей: "+err.Error())

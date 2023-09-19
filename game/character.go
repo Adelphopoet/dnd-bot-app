@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	calculation "github.com/Adelphopoet/dnd-bot-app/game/claculation"
+	"github.com/Adelphopoet/dnd-bot-app/game/weapon"
 	_ "github.com/lib/pq"
 )
 
@@ -21,6 +23,7 @@ type Character struct {
 	ClassIDs       []int
 	CharacterClass []*CharacterClass
 	Attributes     []*CharacterAtribute
+	Inventory      []*InventoryItem
 }
 
 type CharacterAtribute struct {
@@ -234,7 +237,11 @@ func GetCharacterByID(db *sql.DB, characterID int) (*Character, error) {
 	character.ID = characterID
 	_, err = character.GetAttributeValues()
 	if err != nil {
-		return nil, fmt.Errorf("Error during get character attributes: ", err)
+		return nil, fmt.Errorf("Error during get character attributes:  %v", err)
+	}
+	character.Inventory, err = GetInventaryItemsByCharacterID(db, character.ID)
+	if err != nil {
+		return nil, fmt.Errorf("Error during get character inventary:  %v", err)
 	}
 	return &character, nil
 }
@@ -261,6 +268,10 @@ func GetCharacterByName(db *sql.DB, characterName string) (*Character, error) {
 	_, err = character.GetAttributeValues()
 	if err != nil {
 		return nil, fmt.Errorf("Error during get character attributes: ", err)
+	}
+	character.Inventory, err = GetInventaryItemsByCharacterID(db, character.ID)
+	if err != nil {
+		return nil, fmt.Errorf("Error during get character inventary:  %v", err)
 	}
 	return &character, nil
 }
@@ -333,7 +344,7 @@ func (c *Character) GetAttributeValues() ([]*CharacterAtribute, error) {
 	var attributes []*CharacterAtribute
 	for rows.Next() {
 		var attId int
-		attVal := &AttributeValue{FormulaValue: &Formula{}}
+		attVal := &AttributeValue{FormulaValue: &calculation.Formula{}}
 
 		err := rows.Scan(
 			&attId,
@@ -531,7 +542,7 @@ func (c *Character) LvlUp(class *Class) (bool, error) {
 	if err != nil {
 		return true, err
 	}
-	maxHp, err := CalculateFormula(hitDiceFormula)
+	maxHp, err := calculation.CalculateFormula(hitDiceFormula)
 	if err != nil {
 		return true, err
 	}
@@ -547,4 +558,38 @@ func (c *Character) LvlUp(class *Class) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (c *Character) Roll(formula *calculation.Formula) (int, error) {
+	// Replace str attributes to its character values
+	for _, attr := range c.Attributes {
+		var bonusValue int
+		var err error
+
+		if isAttributeMultiply(attr.Attribute.Name) {
+			bonusValue, err = GetAttributeBonus(attr.Value)
+			if err != nil {
+				return 0, fmt.Errorf("Can't get weapon attribute damage: %v", err)
+			}
+		} else {
+			bonusValue = attr.Value.NumericValue
+		}
+
+		formula.Expression = strings.ReplaceAll(formula.Expression, attr.Attribute.Name, fmt.Sprintf("%d", bonusValue))
+	}
+
+	roll, err := calculation.CalculateFormula(formula)
+	if err != nil {
+		return 0, err
+	}
+	return roll, nil
+}
+
+func (c *Character) GetActiveWeapon() (*weapon.Weapon, error) {
+	for _, item := range c.Inventory {
+		if item.Item.Weapon != nil && item.IsUsing {
+			return item.Item.Weapon, nil
+		}
+	}
+	return nil, nil
 }

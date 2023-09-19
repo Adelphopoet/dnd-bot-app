@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Adelphopoet/dnd-bot-app/game"
+	calculation "github.com/Adelphopoet/dnd-bot-app/game/claculation"
 )
 
 type Initiative struct {
@@ -14,8 +15,8 @@ type Initiative struct {
 // Get character initiative to fight turns
 func GetCharacterInitiative(character *game.Character) (*Initiative, error) {
 	// Roll for initiative
-	baseFormula := &game.Formula{Expression: "d20"}
-	rollInitiative, err := game.CalculateFormula(baseFormula)
+	baseFormula := &calculation.Formula{Expression: "d20"}
+	rollInitiative, err := calculation.CalculateFormula(baseFormula)
 	if err != nil {
 		return nil, fmt.Errorf("Error during rolling initiative: %v", err)
 	}

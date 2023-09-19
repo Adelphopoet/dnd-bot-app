@@ -18,6 +18,7 @@ type Fight struct {
 	IsEnded    bool
 	db         *sql.DB
 	Turns      []*Turn
+	Rounds     []*Round
 }
 
 func GetFightByID(db *sql.DB, id int) (*Fight, error) {
@@ -40,6 +41,7 @@ func GetFightByID(db *sql.DB, id int) (*Fight, error) {
 	}
 
 	fight.db = db
+	fight.GetAllFightRounds()
 
 	// Add characters into struct
 	_, _, err = fight.GetFightCharacters()
@@ -173,7 +175,7 @@ func NewFight(db *sql.DB, charaterFrom *game.Character, characterTo *game.Charac
 	if err != nil {
 		return nil, fmt.Errorf("Can't save fight: %v", err)
 	}
-
+	fight.GetAllFightRounds()
 	return fight, nil
 }
 
@@ -223,7 +225,7 @@ func (f *Fight) GetLastActiveRound() (*Round, error) {
 	JOIN game.fact_fight_round fr
 	ON fr.id = frr.round_id
 	WHERE 
-	frr.action_id is null
+	frr.is_ended = false
 	AND fr.fight_id = $1
 	`
 	var roundID int
@@ -258,6 +260,7 @@ func (f *Fight) CreateOrGetRound() (*Round, error) {
 		if err != nil {
 			return nil, err
 		}
+		activeRound.GetRoundRows()
 		return activeRound, nil
 	}
 
@@ -285,4 +288,43 @@ func (f *Fight) CreateOrGetRound() (*Round, error) {
 		}
 	}
 	return round, nil
+}
+
+func (f *Fight) GetAllFightRounds() ([]*Round, error) {
+	rounds, err := GetRoundsByFightID(f.ID, f.db)
+	if err != nil {
+		return nil, err
+	}
+	f.Rounds = rounds
+	return rounds, nil
+}
+
+func (f *Fight) GetLastActiveRoundRow() (*RoundRow, error) {
+	round, err := f.GetLastActiveRound()
+	if err != nil {
+		return nil, fmt.Errorf("Can't get last active round: %v", err)
+	}
+	if round.Rows == nil {
+		return nil, nil
+	}
+	if len(round.Rows) == 0 {
+		return nil, nil
+	}
+
+	minRoundRowTurn := -1
+	var minRoundRow *RoundRow
+
+	for _, row := range round.Rows {
+		if (row.TurnRound < minRoundRowTurn || minRoundRowTurn == -1) && row.IsEnded != true {
+			minRoundRowTurn = row.TurnRound
+			minRoundRow = row
+		}
+	}
+
+	if minRoundRowTurn != -1 {
+		return minRoundRow, nil
+	} else {
+		return nil, nil
+	}
+
 }

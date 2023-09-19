@@ -58,13 +58,14 @@ func (b *Bot) handleFight(message *tgbotapi.Message, msgFrom *tgbotapi.User, opp
 		return
 	}
 	b.sendMessage(message.Chat.ID, fmt.Sprintf("Начат новый раунд ID: %d", newRound.ID))
-	activeTurn, err := fight.WhoseTurn()
+
+	activeRoundRow, err := newRound.GetLastActiveRoundRow()
 	if err != nil {
-		log.Printf("Failed to create round: %v", err)
-		b.sendMessage(message.Chat.ID, "Ошибка получении текущего хода: "+err.Error())
+		b.sendMessage(message.Chat.ID, fmt.Sprintf("Ошибка получения последнего хода: %v", err))
 		return
 	}
-	activePlayer := activeTurn.Character
+
+	activePlayer := activeRoundRow.Character
 	fmt.Printf("\n!!!проверям чей ход")
 	if activeCharacter.ID != activePlayer.ID {
 		fmt.Printf("\n!!!Не наш ход. Я = %d, ходит = %d", activeCharacter.ID, activePlayer.ID)
@@ -83,27 +84,28 @@ func (b *Bot) handleFight(message *tgbotapi.Message, msgFrom *tgbotapi.User, opp
 		// Create choose class buttoms
 		var buttons []tgbotapi.InlineKeyboardButton
 		for _, act := range avaibleActions {
-			commandProp, err := act.GetValueByPropertyName("chat command")
-
-			if err != nil {
-				log.Fatal("Failed to get action %v command: %v", act.Name, err)
-				b.sendMessage(message.Chat.ID, "Не могу получить значение команды "+act.Name+": "+err.Error())
-				return
-			}
-
-			if commandProp == nil {
-				log.Fatal("Failed to get action %v command: %v: No command found.")
-				b.sendMessage(message.Chat.ID, "Не могу получить значение команды "+act.Name+": "+err.Error())
-				return
-			}
-
-			fmt.Printf("\nCommand is :%v\n\n\n\n", commandProp)
-			button := tgbotapi.NewInlineKeyboardButtonData(act.Name, commandProp.Values.StringValue)
+			button := tgbotapi.NewInlineKeyboardButtonData(act.Name, act.Name)
 			buttons = append(buttons, button)
 		}
 		replyMarkup := createInlineKeyboardMarkup(buttons)
 
 		b.sendMessage(message.Chat.ID, "Ваш ход", replyMarkup)
+
+		// Wait for user resp
+		update, err, was_deligated := b.waitForUserResponse(message.Chat.ID)
+		if was_deligated {
+			return
+		}
+
+		// Create attack in round raw
+		attackAction, err := action.GetActionByIDorName(b.db, update.Message.Text)
+		if err != nil {
+			log.Printf("Failed to get action by name: %v", err)
+			b.sendMessage(message.Chat.ID, "Ошибка получении действия: "+err.Error())
+			return
+		}
+		activeRoundRow.DoAttack(opponentCharacter, *attackAction)
+
 	}
 
 }

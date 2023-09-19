@@ -1,11 +1,11 @@
 package action
 
 import (
-	"github.com/Adelphopoet/dnd-bot-app/game"
+	calculation "github.com/Adelphopoet/dnd-bot-app/game/claculation"
 )
 
 type ActionFormula struct {
-	HitFormula    *game.Formula
-	DamageFormula *game.Formula
-	BaseFormula   *game.Formula
+	HitFormula    *calculation.Formula
+	DamageFormula *calculation.Formula
+	BaseFormula   *calculation.Formula
 }

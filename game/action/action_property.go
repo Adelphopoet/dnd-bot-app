@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Adelphopoet/dnd-bot-app/game"
+	calculation "github.com/Adelphopoet/dnd-bot-app/game/claculation"
 )
 
 type ActionProperty struct {
@@ -24,7 +24,7 @@ type PropertyValue struct {
 	StringValue  string
 	NumericValue int
 	BoolValue    bool
-	FormulaValue *game.Formula
+	FormulaValue *calculation.Formula
 }
 
 func (p *ActionProperty) GetActionPropertyValue(actionID int) (*PropertyValue, error) {
@@ -38,7 +38,7 @@ func (p *ActionProperty) GetActionPropertyValue(actionID int) (*PropertyValue, e
 		WHERE action_id = $1
 		AND property_id = $2
 	`
-	value := &PropertyValue{FormulaValue: &game.Formula{}}
+	value := &PropertyValue{FormulaValue: &calculation.Formula{}}
 
 	err := p.db.QueryRow(query, actionID, p.ID).Scan(
 		&value.StringValue,

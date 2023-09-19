@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Adelphopoet/dnd-bot-app/game"
+	calculation "github.com/Adelphopoet/dnd-bot-app/game/claculation"
 )
 
 type Action struct {
@@ -97,9 +97,9 @@ func (a *Action) GetActionFormula() (*ActionFormula, error) {
 	WHERE action_id = $1
 	`
 
-	hitFormula := &game.Formula{}
-	dmgFormula := &game.Formula{}
-	baseFormula := &game.Formula{}
+	hitFormula := &calculation.Formula{}
+	dmgFormula := &calculation.Formula{}
+	baseFormula := &calculation.Formula{}
 	err := a.db.QueryRow(query, a.ID).Scan(&hitFormula.Expression, &dmgFormula.Expression, &baseFormula.Expression)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -154,7 +154,6 @@ func (a *Action) GetActionProperties() ([]*ActionProperty, error) {
 // Get current action property value by it's name
 func (a *Action) GetValueByPropertyName(propertyName string) (*ActionProperty, error) {
 	for _, property := range a.Properties {
-		fmt.Printf("\n\n!!! Ищу свойство %v, вижу %v", propertyName, property.Name)
 		if property.Name == propertyName {
 			_, _ = property.GetActionPropertyValue(a.ID)
 			return property, nil
